@@ -1,0 +1,6 @@
+node_modules/
+.vercel/
+# 비밀값 파일은 올리지 않고, 값이 비어 있는 예시 파일(.env.example)만 올립니다
+.env
+.env.*
+!.env.example
