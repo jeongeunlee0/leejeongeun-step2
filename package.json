@@ -5,6 +5,7 @@
   "description": "제주 역사문화 답사 스탬프 투어 (2단계: 서버리스 API 호출)",
   "scripts": {
     "build:data": "node scripts/build-data.js",
-    "test": "node scripts/test-api.js"
+    "test": "node scripts/test-api.js",
+    "check:live": "node scripts/check-live.js"
   }
 }

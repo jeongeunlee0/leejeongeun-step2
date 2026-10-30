@@ -2,6 +2,7 @@
 
 제주특별자치도 **제주역사문화 일반정보 + 위치정보** 데이터로 장소를 찾고, 지도(또는 3D)에서 보고, 마음에 드는 곳을 찜해 **나만의 답사 코스**를 만들고, 다녀온 곳에 **스탬프**를 찍는 사이트입니다.
 
+- 배포 주소: https://leejeongeun-step2.vercel.app · GitHub: https://github.com/jeongeunlee0/leejeongeun-step2
 - 1단계: CSV 파일 데이터를 `index.html`에 넣어 더블클릭으로 동작
 - **2단계(이 폴더): 데이터를 파일 대신 서버 API로 호출**하고, 공공데이터포털 오픈 API 키는 환경변수로만 읽습니다. API를 쓰지 못하면 1단계 파일 데이터로 보여 주며 **"연습 모드"** 를 표시합니다.
 
@@ -60,6 +61,7 @@ API 키는 **코드·README·프롬프트·GitHub에 넣지 않습니다.** 아�
 ```bash
 node scripts/build-data.js   # data/source 의 CSV → data/places.json (연습 모드 데이터) 다시 만들기
 npm test                     # 가짜 공공데이터포털 서버로 live/practice 전환 점검 (실제 키 불필요)
+npm run check:live           # .env.local 의 실제 키로 API가 동작하는지 점검 (키·주소 값은 출력하지 않음)
 ```
 
 1. `.env.example`을 복사해 `.env.local`을 만들고 값을 채웁니다.
