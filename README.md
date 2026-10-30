@@ -40,21 +40,28 @@ data/places.json (1단계 CSV 데이터)                 ──────▶ �
 
 ## 2. 환경변수와 API 키
 
-API 키는 **코드·README·프롬프트·GitHub에 넣지 않습니다.** 아래 4개 값을 로컬에서는 `.env.local`에, 배포에서는 **Vercel 환경변수**에만 넣습니다.
+API 키는 **코드·README·프롬프트·GitHub에 넣지 않습니다.** 로컬에서는 `.env.local`에, 배포에서는 **Vercel 환경변수**에만 넣습니다.
 
 | 이름 | 설명 |
 | --- | --- |
-| `JEJU_CULTURE_INFO_KEY` | 제주역사문화일반정보 API 인증키 |
-| `JEJU_CULTURE_LOCATION_KEY` | 제주역사문화위치정보 API 인증키 |
-| `JEJU_CULTURE_INFO_URL` | 일반정보 API 요청 주소(키를 뺀 `?` 앞부분) |
-| `JEJU_CULTURE_LOCATION_URL` | 위치정보 API 요청 주소(키를 뺀 `?` 앞부분) |
+| `JEJU_CULTURE_INFO_KEY` | 제주역사문화일반정보 API 인증키 (필수) |
+| `JEJU_CULTURE_LOCATION_KEY` | 제주역사문화위치정보 API 인증키 (필수) |
+| `JEJU_CULTURE_INFO_URL` · `JEJU_CULTURE_LOCATION_URL` | 요청 주소를 바꿔야 할 때만 (선택, 보통 비워 둠) |
 
 - `.env.example`(값이 빈 예시)만 GitHub에 올라가고, `.env.local`은 `.gitignore`로 제외됩니다.
-- 요청 주소는 공공데이터포털 마이페이지 → 개발계정 → 상세보기(Swagger)의 *Request URL*에서 `?` 앞부분을 복사합니다.
 - 인코딩 키·디코딩 키 어느 쪽을 넣어도 한 번만 인코딩되도록 처리합니다.
-- 값이 하나라도 없으면 오류 없이 **연습 모드**로 동작합니다. 화면 위 배지와 `/api/status`로 확인할 수 있습니다.
+- 키가 없거나 틀리면 오류 없이 **연습 모드**로 동작하고, 포털이 돌려준 안내 문구(예: "등록되지 않은 인증키 입니다.")를 이유로 보여 줍니다. 화면 위 배지와 `/api/status`로 확인할 수 있습니다.
 
-> ⚠️ 실제 공공데이터포털 API 응답은 인증키 발급 후에만 확인할 수 있어, 서버 코드는 데이터포털 파일데이터 자동변환 API의 일반적인 응답 형식(`{ data: [...], totalCount }`, 열 이름이 CSV 헤더와 동일)을 가정해 작성하고 **가짜(mock) API 서버로 검증**했습니다. 키를 넣은 뒤 `/api/status`가 `live`로 나오는지 꼭 확인하세요. 응답 형식이 다르면 `lib/source.js`의 `fetchRows`만 고치면 됩니다.
+### 사용하는 오픈 API (공공데이터포털 공개 명세로 확인)
+
+| 데이터 | 요청 주소 | 명세 |
+| --- | --- | --- |
+| 제주역사문화일반정보 | `https://api.odcloud.kr/api/15109587/v1/uddi:56c2b3a4-4b4b-46cd-a1fa-f928ef731ffb` | [Swagger](https://infuser.odcloud.kr/oas/docs?namespace=15109587/v1) |
+| 제주역사문화위치정보 | `https://api.odcloud.kr/api/15109570/v1/uddi:8781448b-81a8-487c-bc95-d26335bafa82` | [Swagger](https://infuser.odcloud.kr/oas/docs?namespace=15109570/v1) |
+
+- 인증: `serviceKey` 쿼리 파라미터 / 쪽 나눔: `page`, `perPage`
+- 응답: `{ page, perPage, totalCount, currentCount, matchCount, data: [...] }` — `data`의 열 이름은 CSV 헤더와 같습니다(`데이터 고유번호`, `장소명`, `위도`, `경도` …).
+- 키 없이 호출하면 `401 "인증키는 필수 항목 입니다."`, 틀린 키는 `401 "등록되지 않은 인증키 입니다."`가 오는 것을 실제로 확인했습니다. 발급받은 키로 한 실제 응답은 키를 넣은 뒤 `npm run check:live`로 확인합니다.
 
 ## 3. 실행·배포·점검
 
@@ -64,9 +71,9 @@ npm test                     # 가짜 공공데이터포털 서버로 live/pract
 npm run check:live           # .env.local 의 실제 키로 API가 동작하는지 점검 (키·주소 값은 출력하지 않음)
 ```
 
-1. `.env.example`을 복사해 `.env.local`을 만들고 값을 채웁니다.
+1. `.env.local`에 키 2개를 채웁니다. (`.env.example`과 같은 모양)
 2. GitHub 저장소에 올린 뒤 Vercel에서 그 저장소를 Import 해 배포합니다. (Framework Preset: Other, `vercel.json`이 `public` 폴더를 정적 출력으로 지정)
-3. Vercel → Project Settings → Environment Variables에 위 4개 값을 넣고 **Redeploy** 합니다.
+3. Vercel → Project Settings → Environment Variables에 키 2개를 넣고 **Redeploy** 합니다.
 4. 시크릿 창(`Ctrl + Shift + N`)에서 Vercel 링크를 열어 확인합니다.
 
 ## 4. 사용자 관점 개선점 10가지

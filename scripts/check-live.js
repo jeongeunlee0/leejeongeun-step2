@@ -14,19 +14,19 @@ function loadEnv(file) {
 }
 loadEnv(path.join(__dirname, "..", ".env.local"));
 
-const { getDataset, envStatus } = require("../lib/source");
-const normalizeKey = k => { const s = String(k || "").trim(); try { return s.includes("%") ? decodeURIComponent(s) : s; } catch (e) { return s; } };
+const { getDataset, envStatus, urls, normalizeKey } = require("../lib/source");
 
-async function probe(label, urlKey, keyKey) {
-  const base = process.env[urlKey], key = process.env[keyKey];
-  if (!base || !key) return console.log("  - " + label + ": " + urlKey + " / " + keyKey + " 중 비어 있는 값이 있어 건너뜀");
+async function probe(label, base, keyKey) {
+  const key = process.env[keyKey];
+  if (!key) return console.log("  - " + label + ": " + keyKey + " 가 비어 있어 건너뜀");
   try {
     const u = new URL(base); u.searchParams.set("page", "1"); u.searchParams.set("perPage", "1"); u.searchParams.set("serviceKey", normalizeKey(key));
     const res = await fetch(u, { signal: AbortSignal.timeout(8000) });
     const text = await res.text();
     console.log("  - " + label + ": HTTP " + res.status + " (" + (res.headers.get("content-type") || "?") + ")");
-    if (res.status === 401 || res.status === 403) return console.log("    인증키가 틀렸거나 아직 활용승인 전일 수 있어요 → 데이터포털 마이페이지에서 승인 상태와 키를 확인하세요");
-    if (!res.ok) return console.log("    요청 주소가 맞는지 확인하세요 (Swagger의 Request URL에서 '?' 앞부분)");
+    let portal = ""; try { const j = JSON.parse(text); if (j && j.msg) portal = " (포털 응답: " + String(j.msg).slice(0, 80) + ")"; } catch (e) {}
+    if (res.status === 401 || res.status === 403) return console.log("    인증키가 틀렸거나 아직 반영 전일 수 있어요" + portal + " → 마이페이지에서 승인 상태와 키를 확인하세요. 발급 직후엔 1시간가량 걸릴 수 있어요");
+    if (!res.ok) return console.log("    요청 주소를 확인하세요" + portal);
     try {
       const j = JSON.parse(text);
       console.log("    응답 최상위 키:", Object.keys(j).join(", "));
@@ -46,7 +46,8 @@ async function probe(label, urlKey, keyKey) {
   }
   console.log("\n🟠 연습 모드(practice) — 이유: " + ds.reason);
   console.log("\n진단(값은 숨김):");
-  await probe("일반정보", "JEJU_CULTURE_INFO_URL", "JEJU_CULTURE_INFO_KEY");
-  await probe("위치정보", "JEJU_CULTURE_LOCATION_URL", "JEJU_CULTURE_LOCATION_KEY");
+  const u = urls();
+  await probe("일반정보", u.info, "JEJU_CULTURE_INFO_KEY");
+  await probe("위치정보", u.location, "JEJU_CULTURE_LOCATION_KEY");
   process.exitCode = 1;
 })();

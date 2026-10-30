@@ -5,18 +5,23 @@ const path = require("path");
 const { loadCsv } = require("../lib/csv");
 
 const SRC = path.join(__dirname, "..", "data", "source");
-const INFO = loadCsv(SRC, "일반정보"), LOC = loadCsv(SRC, "위치정보");
+// 실제 API처럼 숫자로 보이는 값은 숫자로, 빈 값은 null 로 돌려줍니다 (자료형이 달라도 병합이 맞는지 확인)
+const typed = rows => rows.map(r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v === "" ? null : (/^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v)])));
+const INFO = typed(loadCsv(SRC, "일반정보")), LOC = typed(loadCsv(SRC, "위치정보"));
 const MOCK_KEY = "fake+key/for+test==";    // 테스트 전용 가짜 값 (일부러 특수문자 포함: 인코딩 처리 확인)
+const MAX_PER_PAGE = 50;                   // 한 번에 다 주지 않는 경우에도 여러 쪽을 모두 받아오는지 확인
 let mode = "ok";
 
-// 데이터포털 파일데이터 자동 변환 API와 같은 모양({currentCount, data, totalCount, page, perPage})으로 응답
+// 공공데이터포털 공개 명세(infuser.odcloud.kr/oas/docs)와 같은 모양으로 응답: { page, perPage, totalCount, currentCount, matchCount, data }
 const mock = http.createServer((req, res) => {
   const u = new URL(req.url, "http://x");
-  if (u.searchParams.get("serviceKey") !== MOCK_KEY) { res.statusCode = 401; return res.end(JSON.stringify({ msg: "unauthorized" })); }
+  res.setHeader("Content-Type", "application/json");
+  if (!u.searchParams.get("serviceKey")) { res.statusCode = 401; return res.end(JSON.stringify({ code: -401, msg: "인증키는 필수 항목 입니다." })); }
+  if (u.searchParams.get("serviceKey") !== MOCK_KEY) { res.statusCode = 401; return res.end(JSON.stringify({ code: -4, msg: "등록되지 않은 인증키 입니다." })); }
   if (mode === "html") { res.setHeader("Content-Type", "text/html"); return res.end("<html>점검 중</html>"); }
   if (mode === "shape") return res.end(JSON.stringify({ hello: "world" }));
   const rows = u.pathname === "/info" ? INFO : LOC;
-  const page = +u.searchParams.get("page") || 1, per = +u.searchParams.get("perPage") || 10;
+  const page = +u.searchParams.get("page") || 1, per = Math.min(+u.searchParams.get("perPage") || 10, MAX_PER_PAGE);
   const data = rows.slice((page - 1) * per, page * per);
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify({ currentCount: data.length, data, matchCount: rows.length, page, perPage: per, totalCount: rows.length }));
@@ -52,6 +57,12 @@ async function main() {
   setEnv({ ...good, JEJU_CULTURE_INFO_KEY: "WRONG" }); src.resetCache();
   r = await places.list({});
   check(r.mode === "practice" && /401/.test(r.reason) && !r.reason.includes("WRONG"), "연습 모드 + HTTP 401 안내, 키 값 미노출");
+  check(/등록되지 않은 인증키/.test(r.reason), "포털의 안내 문구(등록되지 않은 인증키)를 이유에 보여 준다");
+
+  console.log("3-1) 요청 주소 환경변수를 비워 두면 공식 명세의 기본 주소를 쓴다");
+  setEnv({ JEJU_CULTURE_INFO_KEY: MOCK_KEY, JEJU_CULTURE_LOCATION_KEY: MOCK_KEY });
+  const u = src.urls();
+  check(/^https:\/\/api\.odcloud\.kr\/api\/15109587\/v1\/uddi:56c2b3a4-/.test(u.info) && /^https:\/\/api\.odcloud\.kr\/api\/15109570\/v1\/uddi:8781448b-/.test(u.location), "기본 주소 = 명세의 일반정보·위치정보 주소");
 
   console.log("4) API 서버 다운 → 연습 모드");
   setEnv({ ...good, JEJU_CULTURE_INFO_URL: "http://127.0.0.1:1/info" }); src.resetCache();
